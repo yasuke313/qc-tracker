@@ -46,7 +46,7 @@ function Dashboard() {
   const fetchAnalytes = async () => {
     try {
       const { data } = await axios.get(
-        "http://localhost:5000/api/analytes",
+        "https://qc-tracker-1.onrender.com/api/analytes",
         config,
       );
       setAnalytes(data);
@@ -59,7 +59,7 @@ function Dashboard() {
   const fetchEntries = async () => {
     try {
       const { data } = await axios.get(
-        `http://localhost:5000/api/qc-entries?analyteId=${selectedAnalyte._id}`,
+        `https://qc-tracker-1.onrender.com/api/qc-entries?analyteId=${selectedAnalyte._id}`,
         config,
       );
       setEntries(data);
@@ -76,7 +76,7 @@ function Dashboard() {
 
     try {
       await axios.post(
-        "http://localhost:5000/api/qc-entries",
+        "https://qc-tracker-1.onrender.com/api/qc-entries",
         {
           analyteId: selectedAnalyte._id,
           result: Number(result),
@@ -88,6 +88,7 @@ function Dashboard() {
       setResult("");
       setNotes("");
       setSubmitted(true);
+      setActivePage("log");
       fetchEntries();
     } catch (error) {
       setError(error.response?.data?.message || "Something went wrong");
@@ -168,7 +169,7 @@ function Dashboard() {
               activePage === "submit" ? activeNav : inactiveNav
             }`}
           >
-            Submit Result
+            Daily Entries
           </button>
           <button
             onClick={() => setActivePage("chart")}
@@ -196,7 +197,7 @@ function Dashboard() {
           <p className={`${subtext} text-xs mb-4`}>
             {user.role.replace("_", " ")}
           </p>
-          
+
           <button
             onClick={handleLogout}
             className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
@@ -325,17 +326,31 @@ function Dashboard() {
             {/* LJ Chart page */}
             {activePage === "chart" && (
               <div className={`${card} rounded-xl shadow p-6`}>
-                <h3 className={`text-lg font-bold ${text} mb-4`}>
+                <h3 className={`text-lg font-bold ${text} mb-1`}>
                   Levey-Jennings Chart — {selectedAnalyte.name} (
                   {selectedAnalyte.level})
                 </h3>
+                <p className={`${subtext} text-sm mb-4`}>
+                  Mean: {selectedAnalyte.mean} | SD: {selectedAnalyte.sd} |
+                  Unit: {selectedAnalyte.unit}
+                </p>
                 {!submitted || entries.length === 0 ? (
                   <p className={`${subtext} text-center py-20`}>
                     No data yet. Submit a QC result first to see the chart.
                   </p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={chartData}>
+                  <ResponsiveContainer width="100%" height={420}>
+                    <LineChart
+                      data={entries.map((entry, index) => ({
+                        run: index + 1,
+                        result: entry.result,
+                        zScore: entry.zScore.toFixed(2),
+                        status: entry.status,
+                        flags:
+                          entry.flags.map((f) => f.rule).join(", ") || "none",
+                      }))}
+                      margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                    >
                       <CartesianGrid
                         strokeDasharray="3 3"
                         stroke={darkMode ? "#374151" : "#e5e7eb"}
@@ -343,96 +358,214 @@ function Dashboard() {
                       <XAxis
                         dataKey="run"
                         stroke={darkMode ? "#9ca3af" : "#6b7280"}
+                        label={{
+                          value: "Run Number",
+                          position: "insideBottom",
+                          offset: -10,
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                        }}
                       />
                       <YAxis
                         domain={["auto", "auto"]}
                         stroke={darkMode ? "#9ca3af" : "#6b7280"}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: darkMode ? "#1f2937" : "#ffffff",
-                          border: "none",
-                          borderRadius: "8px",
-                          color: darkMode ? "#ffffff" : "#000000",
+                        label={{
+                          value: selectedAnalyte.unit,
+                          angle: -90,
+                          position: "insideLeft",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
                         }}
                       />
+
+                      {/* Custom tooltip */}
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const d = payload[0].payload;
+                            const color =
+                              d.status === "rejected"
+                                ? "#f87171"
+                                : d.status === "warning"
+                                  ? "#fb923c"
+                                  : "#4ade80";
+                            return (
+                              <div
+                                style={{
+                                  backgroundColor: darkMode
+                                    ? "#1f2937"
+                                    : "#ffffff",
+                                  border: `1px solid ${color}`,
+                                  borderRadius: "8px",
+                                  padding: "10px 14px",
+                                }}
+                              >
+                                <p
+                                  style={{
+                                    color: darkMode ? "#fff" : "#000",
+                                    fontWeight: "bold",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  Run {d.run}
+                                </p>
+                                <p
+                                  style={{
+                                    color: darkMode ? "#d1d5db" : "#4b5563",
+                                    fontSize: "13px",
+                                  }}
+                                >
+                                  Result:{" "}
+                                  <strong>
+                                    {d.result} {selectedAnalyte.unit}
+                                  </strong>
+                                </p>
+                                <p
+                                  style={{
+                                    color: darkMode ? "#d1d5db" : "#4b5563",
+                                    fontSize: "13px",
+                                  }}
+                                >
+                                  Z-Score: <strong>{d.zScore}</strong>
+                                </p>
+                                <p
+                                  style={{
+                                    color,
+                                    fontSize: "13px",
+                                    fontWeight: "bold",
+                                    marginTop: "4px",
+                                  }}
+                                >
+                                  {d.status.toUpperCase()}
+                                  {d.flags !== "none" ? ` — ${d.flags}` : ""}
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+
+                      {/* SD Reference lines */}
                       <ReferenceLine
                         y={selectedAnalyte.mean}
-                        stroke="green"
+                        stroke="#22c55e"
                         strokeWidth={2}
                         label={{
                           value: "Mean",
                           fill: darkMode ? "#fff" : "#000",
+                          fontSize: 11,
                         }}
                       />
                       <ReferenceLine
                         y={selectedAnalyte.mean + selectedAnalyte.sd}
                         stroke="#3b82f6"
-                        strokeDasharray="3 3"
+                        strokeDasharray="4 4"
                         label={{
                           value: "+1SD",
-                          fill: darkMode ? "#fff" : "#000",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
                         }}
                       />
                       <ReferenceLine
                         y={selectedAnalyte.mean - selectedAnalyte.sd}
                         stroke="#3b82f6"
-                        strokeDasharray="3 3"
+                        strokeDasharray="4 4"
                         label={{
                           value: "-1SD",
-                          fill: darkMode ? "#fff" : "#000",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
                         }}
                       />
                       <ReferenceLine
                         y={selectedAnalyte.mean + 2 * selectedAnalyte.sd}
-                        stroke="orange"
-                        strokeDasharray="3 3"
+                        stroke="#f97316"
+                        strokeDasharray="4 4"
                         label={{
                           value: "+2SD",
-                          fill: darkMode ? "#fff" : "#000",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
                         }}
                       />
                       <ReferenceLine
                         y={selectedAnalyte.mean - 2 * selectedAnalyte.sd}
-                        stroke="orange"
-                        strokeDasharray="3 3"
+                        stroke="#f97316"
+                        strokeDasharray="4 4"
                         label={{
                           value: "-2SD",
-                          fill: darkMode ? "#fff" : "#000",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
                         }}
                       />
                       <ReferenceLine
                         y={selectedAnalyte.mean + 3 * selectedAnalyte.sd}
-                        stroke="red"
-                        strokeDasharray="3 3"
+                        stroke="#ef4444"
+                        strokeDasharray="4 4"
                         label={{
                           value: "+3SD",
-                          fill: darkMode ? "#fff" : "#000",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
                         }}
                       />
                       <ReferenceLine
                         y={selectedAnalyte.mean - 3 * selectedAnalyte.sd}
-                        stroke="red"
-                        strokeDasharray="3 3"
+                        stroke="#ef4444"
+                        strokeDasharray="4 4"
                         label={{
                           value: "-3SD",
-                          fill: darkMode ? "#fff" : "#000",
+                          fill: darkMode ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
                         }}
                       />
+
+                      {/* The line connecting all points */}
                       <Line
                         type="monotone"
                         dataKey="result"
-                        stroke="#2563eb"
+                        stroke={darkMode ? "#60a5fa" : "#2563eb"}
                         strokeWidth={2}
-                        dot={{ fill: "#2563eb", r: 5 }}
-                        activeDot={{ r: 8 }}
+                        dot={(props) => {
+                          const { cx, cy, payload } = props;
+                          const color =
+                            payload.status === "rejected"
+                              ? "#ef4444"
+                              : payload.status === "warning"
+                                ? "#f97316"
+                                : "#22c55e";
+                          return (
+                            <circle
+                              key={`dot-${props.index}`}
+                              cx={cx}
+                              cy={cy}
+                              r={6}
+                              fill={color}
+                              stroke={darkMode ? "#1f2937" : "#ffffff"}
+                              strokeWidth={2}
+                            />
+                          );
+                        }}
+                        activeDot={{ r: 9 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
+
+                {/* Legend */}
+                <div className="flex gap-6 mt-4 justify-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                    <span className={`${subtext} text-xs`}>In control</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-orange-400"></div>
+                    <span className={`${subtext} text-xs`}>Warning</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                    <span className={`${subtext} text-xs`}>Rejected</span>
+                  </div>
+                </div>
               </div>
             )}
-
+            
             {/* QC Log page */}
             {activePage === "log" && (
               <div className={`${card} rounded-xl shadow p-6`}>

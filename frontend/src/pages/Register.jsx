@@ -21,7 +21,7 @@ function Register() {
 
     try {
       const { data } = await axios.post(
-        "http://localhost:5000/api/auth/register",
+        "https://qc-tracker-1.onrender.com/api/auth/register",
         { name, email, password, role },
       );
       login(data);

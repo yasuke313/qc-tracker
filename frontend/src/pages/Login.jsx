@@ -19,7 +19,7 @@ function Login() {
 
     try {
       const { data } = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        "https://qc-tracker-1.onrender.com/api/auth/login",
         { email, password },
       );
       login(data);
