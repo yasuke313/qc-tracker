@@ -292,6 +292,25 @@ function Dashboard() {
         </div>
 
         {/* rest of your content stays here unchanged */}
+        {/* Analyte selector */}
+        <div className={`${card} rounded-xl p-4 mb-6 shadow`}>
+          <label className={`block ${text} font-medium mb-2`}>
+            Select Analyte
+          </label>
+          <select
+            onChange={(e) =>
+              setSelectedAnalyte(analytes.find((a) => a._id === e.target.value))
+            }
+            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 ${input}`}
+          >
+            {analytes.map((analyte) => (
+              <option key={analyte._id} value={analyte._id}>
+                {analyte.name} ({analyte.level}) — Mean: {analyte.mean} | SD:{" "}
+                {analyte.sd} {analyte.unit}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {selectedAnalyte && (
           <>
