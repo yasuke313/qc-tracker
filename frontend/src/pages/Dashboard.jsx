@@ -228,16 +228,16 @@ function Dashboard() {
           >
             QC Log
           </button>
-        </nav>
 
-        <button
-          onClick={() => setActivePage("addAnalyte")}
-          className={`w-full text-left px-4 py-2 rounded-lg font-medium transition ${
-            activePage === "addAnalyte" ? activeNav : inactiveNav
-          }`}
-        >
-          Add Analyte
-        </button>
+          <button
+            onClick={() => setActivePage("addAnalyte")}
+            className={`w-full text-left px-4 py-2 rounded-lg font-medium transition ${
+              activePage === "addAnalyte" ? activeNav : inactiveNav
+            }`}
+          >
+            Add Analyte
+          </button>
+        </nav>
 
         {/* Bottom section */}
         <div
