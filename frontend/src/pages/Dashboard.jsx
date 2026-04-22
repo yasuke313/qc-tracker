@@ -29,6 +29,15 @@ function Dashboard() {
   const [darkMode, setDarkMode] = useState(true);
   const [activePage, setActivePage] = useState("dashboard");
 
+  const [analyteName, setAnalyteName] = useState("");
+  const [analyteUnit, setAnalyteUnit] = useState("");
+  const [analyteLevel, setAnalyteLevel] = useState("low");
+  const [analyteMean, setAnalyteMean] = useState("");
+  const [analyteSd, setAnalyteSd] = useState("");
+  const [analyteLoading, setAnalyteLoading] = useState(false);
+  const [analyteError, setAnalyteError] = useState("");
+  const [analyteSuccess, setAnalyteSuccess] = useState("");
+
   const config = {
     headers: { Authorization: `Bearer ${user.token}` },
   };
@@ -100,6 +109,38 @@ function Dashboard() {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleAddAnalyte = async (e) => {
+    e.preventDefault();
+    setAnalyteError("");
+    setAnalyteSuccess("");
+    setAnalyteLoading(true);
+
+    try {
+      await axios.post(
+        "https://qc-tracker-1.onrender.com/api/analytes",
+        {
+          name: analyteName,
+          unit: analyteUnit,
+          level: analyteLevel,
+          mean: Number(analyteMean),
+          sd: Number(analyteSd),
+        },
+        config,
+      );
+      setAnalyteSuccess(`${analyteName} (${analyteLevel}) added successfully!`);
+      setAnalyteName("");
+      setAnalyteUnit("");
+      setAnalyteLevel("low");
+      setAnalyteMean("");
+      setAnalyteSd("");
+      fetchAnalytes();
+    } catch (error) {
+      setAnalyteError(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setAnalyteLoading(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -188,6 +229,15 @@ function Dashboard() {
             QC Log
           </button>
         </nav>
+
+        <button
+          onClick={() => setActivePage("addAnalyte")}
+          className={`w-full text-left px-4 py-2 rounded-lg font-medium transition ${
+            activePage === "addAnalyte" ? activeNav : inactiveNav
+          }`}
+        >
+          Add Analyte
+        </button>
 
         {/* Bottom section */}
         <div
@@ -565,7 +615,7 @@ function Dashboard() {
                 </div>
               </div>
             )}
-            
+
             {/* QC Log page */}
             {activePage === "log" && (
               <div className={`${card} rounded-xl shadow p-6`}>
@@ -622,6 +672,109 @@ function Dashboard() {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Add Analyte page */}
+            {activePage === "addAnalyte" && (
+              <div className={`${card} rounded-xl shadow p-6`}>
+                <h3 className={`text-lg font-bold ${text} mb-1`}>
+                  Add New Analyte
+                </h3>
+                <p className={`${subtext} text-sm mb-6`}>
+                  Create a new test type with its reference mean and SD
+                </p>
+                {analyteError && (
+                  <p className="bg-red-900 text-red-300 p-3 rounded mb-4 text-sm">
+                    {analyteError}
+                  </p>
+                )}
+                {analyteSuccess && (
+                  <p className="bg-green-900 text-green-300 p-3 rounded mb-4 text-sm">
+                    {analyteSuccess}
+                  </p>
+                )}
+                <form onSubmit={handleAddAnalyte}>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className={`block ${text} font-medium mb-1`}>
+                        Analyte Name
+                      </label>
+                      <input
+                        type="text"
+                        value={analyteName}
+                        onChange={(e) => setAnalyteName(e.target.value)}
+                        required
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 ${input}`}
+                        placeholder="e.g. Potassium"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block ${text} font-medium mb-1`}>
+                        Unit
+                      </label>
+                      <input
+                        type="text"
+                        value={analyteUnit}
+                        onChange={(e) => setAnalyteUnit(e.target.value)}
+                        required
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 ${input}`}
+                        placeholder="e.g. mmol/L"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className={`block ${text} font-medium mb-1`}>
+                      Level
+                    </label>
+                    <select
+                      value={analyteLevel}
+                      onChange={(e) => setAnalyteLevel(e.target.value)}
+                      className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 ${input}`}
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <label className={`block ${text} font-medium mb-1`}>
+                        Mean
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={analyteMean}
+                        onChange={(e) => setAnalyteMean(e.target.value)}
+                        required
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 ${input}`}
+                        placeholder="e.g. 4.5"
+                      />
+                    </div>
+                    <div>
+                      <label className={`block ${text} font-medium mb-1`}>
+                        Standard Deviation (SD)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={analyteSd}
+                        onChange={(e) => setAnalyteSd(e.target.value)}
+                        required
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 ${input}`}
+                        placeholder="e.g. 0.2"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={analyteLoading}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {analyteLoading ? "Adding..." : "Add Analyte"}
+                  </button>
+                </form>
               </div>
             )}
           </>
